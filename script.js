@@ -10,6 +10,7 @@
     dpi: 1,
     time: 0,
     boost: 1,
+    scroll: 0,
     pointer: { x: 0, y: 0, active: false, pulse: 0 },
     particles: [],
     sparks: [],
@@ -76,10 +77,11 @@
 
   function fieldCenter() {
     const portrait = state.width < 760;
+    const depth = state.scroll;
     return {
-      x: portrait ? state.width * 0.5 : state.width * 0.46,
-      y: portrait ? state.height * 0.29 : state.height * 0.5,
-      scale: Math.min(state.width * (portrait ? 0.58 : 0.34), state.height * 0.5),
+      x: portrait ? state.width * (0.5 - depth * 0.04) : state.width * (0.46 + depth * 0.06),
+      y: portrait ? state.height * (0.29 + depth * 0.12) : state.height * (0.5 - depth * 0.04),
+      scale: Math.min(state.width * (portrait ? 0.58 + depth * 0.08 : 0.34 + depth * 0.03), state.height * 0.56),
     };
   }
 
@@ -392,7 +394,15 @@
     state.pointer.pulse = Math.min(1, state.pointer.pulse + 0.08);
   }
 
+  function syncScroll() {
+    const max = Math.max(1, document.documentElement.scrollHeight - window.innerHeight);
+    state.scroll = Math.min(1, Math.max(0, window.scrollY / max));
+    document.documentElement.style.setProperty("--scroll", state.scroll.toFixed(3));
+    document.documentElement.dataset.depth = state.scroll > 0.04 ? "reading" : "top";
+  }
+
   window.addEventListener("resize", fit);
+  window.addEventListener("scroll", syncScroll, { passive: true });
   window.addEventListener("pointermove", setPointer, { passive: true });
   window.addEventListener("pointerdown", setPointer, { passive: true });
   window.addEventListener("pointerleave", () => {
@@ -400,12 +410,18 @@
   });
   window.addEventListener("touchmove", setPointer, { passive: true });
 
-  enterButton.addEventListener("click", () => {
-    const awake = document.documentElement.dataset.intent !== "awake";
-    document.documentElement.dataset.intent = awake ? "awake" : "";
-    enterButton.classList.toggle("is-active", awake);
-  });
+  if (enterButton) {
+    enterButton.addEventListener("click", () => {
+      const target = document.querySelector(enterButton.dataset.scrollTarget);
+      document.documentElement.dataset.intent = "awake";
+      enterButton.classList.add("is-active");
+      if (target) {
+        target.scrollIntoView({ behavior: reducedMotion.matches ? "auto" : "smooth" });
+      }
+    });
+  }
 
   fit();
+  syncScroll();
   requestAnimationFrame(frame);
 })();
